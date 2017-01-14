@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 # 闭包
 def calc_prod(lst):
@@ -26,3 +28,20 @@ def factorial(n):
     return reduce(lambda x,y: x*y, range(1, n+1))
 
 print factorial(100)
+
+import functools
+
+sorted_ignore_case = functools.partial(sorted, key=functools.cmp_to_key(lambda x,y : cmp(x.upper(), y.upper())))
+
+print sorted_ignore_case(['bob', 'about', 'Zoo', 'Credit'])
+
+
+class Person(object):
+    def __init__(self, name, score):
+        self.name = name
+        self.__score = score
+
+p = Person('Bob', 59)
+
+print p.name
+print p.__score

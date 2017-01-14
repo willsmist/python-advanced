@@ -1,6 +1,9 @@
 # 《Python 进阶》 学习笔记
 
-## 1. 函数式编程
+## 函数式编程
+
+本节内容摘自[阮一峰](http://www.ruanyifeng.com/blog/)老师的文章：[函数式编程初探
+](http://www.ruanyifeng.com/blog/2012/04/functional_programming.html)
 
 简单说，"函数式编程"是一种"编程范式"（programming paradigm），也就是如何编写程序的方法论。
 
@@ -62,35 +65,220 @@ function reverse(string) {
   不同的状态之下，返回值是不一样的。这就叫"引用不透明"，很不利于观察和理解程序的行为。
 
 
-## 2. 高阶函数
+## 高阶函数
 
 高阶函数：能够接收函数做参数的函数
 
 
-## 3. 闭包
+## 闭包
+
+将 g 的定义移入函数 f 内部，防止其他代码调用 g：
+
+``` python
+def f():
+    print 'f()...'
+    def g():
+        print 'g()...'
+    return g
+
+def calc_sum(lst):
+    def lazy_sum():
+        return sum(lst)
+    return lazy_sum
+```
+
+注意: 发现没法把 lazy_sum 移到 calc_sum 的外部，因为它引用了 calc_sum 的参数 lst。
+
+像这种内层函数引用了外层函数的变量（参数也算变量），然后返回内层函数的情况，称为闭包（Closure）。
+
+闭包的特点是返回的函数还引用了外层函数的局部变量，所以，要正确使用闭包，就要确保引用的局部变量在函数返回后不能变。考察如下代码:
+
+``` python
+# 希望一次返回3个函数，分别计算1x1,2x2,3x3:
+def count():
+    fs = []
+    for i in range(1, 4):
+        def f():
+             return i*i
+        fs.append(f)
+    return fs
+
+f1, f2, f3 = count()
+```
+
+实际结果全部都是 9（请自己动手验证）。
+
+原因就是当count()函数返回了3个函数时，这3个函数所引用的变量 i 的值已经变成了3。由于f1、f2、f3并没有被调用，所以，此时他们并未计算 i*i，当 f1 被调用时：
+
+``` python
+f1()
+9     # 因为f1现在才计算i*i，但现在i的值已经变为3
+```
 
 
+因此，返回函数不要引用任何循环变量，或者后续会发生变化的变量。
+
+考察下面的函数 f:
+
+``` python
+def f(j):
+    def g():
+        return j*j
+    return g
+```
+
+它可以正确地返回一个闭包g，g所引用的变量j不是循环变量，因此将正常执行。
+
+在count函数的循环内部，如果借助f函数，就可以避免引用循环变量i。
+
+参考代码:
+
+``` python
+def count():
+    fs = []
+    for i in range(1, 4):
+        def f(j):
+            def g():
+                return j*j
+            return g
+        r = f(i)
+        fs.append(r)
+    return fs
+f1, f2, f3 = count()
+print f1(), f2(), f3()
+```
+
+## 匿名函数
+
+高阶函数可以接收函数做参数，有些时候，我们不需要显式地定义函数，直接传入匿名函数更方便。
+
+在Python中，对匿名函数提供了有限支持。就是只能有一个表达式，不写return，返回值就是该表达式的结果。
+
+使用匿名函数可以简化代码，返回函数的时候，也可以返回匿名函数。
+
+``` python
+myabs = lambda x: -x if x < 0 else x
+```
+
+## 装饰器
+
+Python的 decorator 本质上就是一个高阶函数，它接收一个函数作为参数，然后，返回一个新函数。
+
+使用 decorator 用Python提供的 @ 语法，这样可以避免手动编写 f = decorate(f) 这样的代码。
+
+要让 \@log 自适应任何参数定义的函数，可以利用Python的 \*args 和 \*\*kw，保证任意个数的参数总是能正常调用：
+
+``` python
+def log(f):
+    def fn(*args, **kw):
+        print 'call ' + f.__name__ + '()...'
+        return f(*args, **kw)
+    return fn
+```
+
+现在，对于任意函数，\@log 都能正常工作。
+
+考察 \@log 装饰器：
+
+``` python
+def log(f):
+    def fn(x):
+        print 'call ' + f.__name__ + '()...'
+        return f(x)
+    return fn
+```
+
+发现对于被装饰的函数，log打印的语句是不能变的（除了函数名）。
+
+如果有的函数非常重要，希望打印出'[INFO] call xxx()...'，有的函数不太重要，希望打印出'[DEBUG] call xxx()...'，这时，log函数本身就需要传入'INFO'或'DEBUG'这样的参数，类似这样：
+
+```python
+@log('DEBUG')
+def my_func():
+    pass
+```
+
+把上面的定义翻译成高阶函数的调用，就是：
+
+```python
+my_func = log('DEBUG')(my_func)
+```
+
+上面的语句看上去还是比较绕，再展开一下：
+
+```python
+log_decorator = log('DEBUG')
+my_func = log_decorator(my_func)
+```
+
+上面的语句又相当于：
+
+```python
+log_decorator = log('DEBUG')
+@log_decorator
+def my_func():
+    pass
+```
+
+所以，带参数的log函数首先返回一个decorator函数，再让这个decorator函数接收my_func并返回新函数：
+
+```python
+def log(prefix):
+    def log_decorator(f):
+        def wrapper(*args, **kw):
+            print '[%s] %s()...' % (prefix, f.__name__)
+            return f(*args, **kw)
+        return wrapper
+    return log_decorator
+
+@log('DEBUG')
+def test():
+    pass
+print test()
+```
+
+执行结果：
+
+```
+[DEBUG] test()...
+None
+```
+
+对于这种3层嵌套的decorator定义，你可以先把它拆开：
+
+```python
+# 标准decorator:
+def log_decorator(f):
+    def wrapper(*args, **kw):
+        print '[%s] %s()...' % (prefix, f.__name__)
+        return f(*args, **kw)
+    return wrapper
+return log_decorator
+
+# 返回decorator:
+def log(prefix):
+    return log_decorator(f)
+```
+
+拆开以后会发现，调用会失败，因为在3层嵌套的decorator定义中，最内层的wrapper引用了最外层的参数prefix，所以，把一个闭包拆成普通的函数调用会比较困难。不支持闭包的编程语言要实现同样的功能就需要更多的代码。
 
 
+## 偏函数
+
+当一个函数有很多参数时，调用者就需要提供多个参数。如果减少参数个数，就可以简化调用者的负担。
+
+functools.partial可以把一个参数多的函数变成一个参数少的新函数，少的参数需要在创建时指定默认值，这样，新函数调用的难度就降低了。
 
 
+# 面向对象
 
+The pass statement
+pass is a null operation — when it is executed, nothing happens. It is useful as a placeholder when a statement is required syntactically, but no code needs to be executed, for example:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
+def f(arg): pass    # a function that does nothing (yet)
+class C: pass       # a class with no methods (yet)
+```
 
 
 
@@ -153,7 +341,7 @@ function reverse(string) {
 
   截取整数部分
 
-11. sorted(L, f)
+11. sorted(iterable[, cmp[, key[, reverse]]])
 
   Python 内置高阶函数,它可以接收一个比较函数来实现自定义排序，比较函数的定义是，传入两个待比较的元素 x, y，
 
