@@ -1,4 +1,6 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
+
 class Person(object):
 
     address = 'Earth'
@@ -68,35 +70,75 @@ print sorted(L)
 def fib(n):
     L = []
     def f(k):
-        if k == 1:
+
+        if k == 0:
             L.append(0)
+            return 0, 0
+        if k == 1:
+            f(0)
             L.append(1)
-            return 0,1
+            return 0, 1
         preResult = f(k-1)
         result = (preResult[1], sum(preResult))
         L.append(result[1])
         return result
-    f(n)
+    f(n-1)
     return L
-print fib(100)
+print fib(10)
 
 
 class Fib(object):
+
     def __init__(self, num):
         a, b, L = 0, 1, []
-        for n in range(num):
+        for i in range(num):
             L.append(a)
             a, b = b, a + b
-        self.numbers = L
+        self.nums = L
 
     def __str__(self):
-        return str(self.numbers)
+        return str(self.nums)
 
     __repr__ = __str__
 
     def __len__(self):
-        return len(self.numbers)
+        return len(self.nums)
 
-f = Fib(500)
+f = Fib(10)
 print f
 print len(f)
+
+print '----------------------------------'
+
+def gcd(a, b):
+    return b if a % b == 0 else gcd(b, a % b)
+
+class Rational(object):
+    def __init__(self, p, q):
+        self.p = p
+        self.q = q
+
+    def __add__(self, r):
+        return Rational(self.p * r.q + self.q * r.p, self.q * r.q)
+
+    def __sub__(self, r):
+        return Rational(self.p * r.q - self.q * r.p, self.q * r.q)
+
+    def __mul__(self, r):
+        return Rational(self.p * r.p, self.q * r.q)
+
+    def __div__(self, r):
+        return Rational(self.p * r.q, self.q * r.p)
+
+    def __str__(self):
+        g = gcd(self.p, self.q)
+        return '%s/%s' % (self.p / g, self.q / g)
+
+    __repr__ = __str__
+
+r1 = Rational(1, 2)
+r2 = Rational(1, 4)
+print r1 + r2
+print r1 - r2
+print r1 * r2
+print r1 / r2

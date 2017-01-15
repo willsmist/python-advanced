@@ -350,3 +350,8 @@ class C: pass       # a class with no methods (yet)
 12. cmp(x, y)
 
   比较函数
+
+
+## 与 Python3 不同之处
+
+1. python3里 / 结果是浮点数  // 结果是整数
